@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Lanetli Ev</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: black;
+  touch-action: none;
+  font-family: Arial, sans-serif;
+  color: #ddd;
+}
+
+#container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#text {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(16px, 4vw, 22px);
+  line-height: 1.5;
+}
+
+/* Geçiş */
+.animate {
+  animation: textIn 0.6s ease;
+}
+@keyframes textIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Titreme */
+.shake {
+  animation: shake 0.4s;
+}
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(6px); }
+  50% { transform: translateX(-6px); }
+  75% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+button {
+  width: 100%;
+  max-width: 320px;
+  margin: 6px auto;
+  padding: 15px;
+  background: #111;
+  color: #aaa;
+  border: 1px solid #333;
+  font-size: 18px;
+  border-radius: 6px;
+}
+
+input {
+  width: 100%;
+  max-width: 300px;
+  margin: 8px auto;
+  padding: 12px;
+  font-size: 20px;
+  text-align: center;
+  background: black;
+  color: #fff;
+  border: 1px solid #444;
+  outline: none;
+}
+
+#history {
+  font-size: 14px;
+  color: #888;
+  min-height: 40px;
+}
+
+#noteEmoji {
+  display: none;
+  font-size: 64px;
+  margin-top: 10px;
+  pointer-events: none;
+}
+
+.red-note {
+  color: #b00000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#notePaper {
+  display: none;
+  background: #e6dcc9;
+  color: #2b2b2b;
+  padding: 20px;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+  font-family: "Courier New", monospace;
+}
+
+/* === AYİN EKRANI STİLİ === */
+#ritualScreen {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, #000 40%, #120000 100%);
+  align-items: center;
+  justify-content: center;
+}
+
+.ritual-container {
+  background: rgba(0,0,0,0.75);
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 0 40px crimson;
+  animation: fadeIn 2s ease;
+}
+
+.ritual-container h1 {
+  color: crimson;
+  letter-spacing: 2px;
+}
+
+.ritual-container button {
+  background: #2b0000;
+  border: 1px solid crimson;
+  color: white;
+}
+
+.ritual-container button:hover {
+  background: crimson;
+}
+
+#ritualText {
+  margin-top: 20px;
+  min-height: 60px;
+  font-size: 15px;
+}
+
+.symbol {
+  font-size: 40px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: 1s;
+}
+.symbol.show {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+</style>
+</head>
+
+<body>
+
+<audio id="bgSound" autoplay loop>
+  <source src="korku.mp3" type="audio/mpeg">
+</audio>
+
+<div id="container">
+  <div id="text" class="animate">Hoş geldin Dilan.</div>
+
+  <input id="codeInput" type="number" placeholder="----" style="display:none;">
+  <button id="checkBtn" style="display:none;">KONTROL ET</button>
+
+  <div id="history"></div>
+  <div id="noteEmoji">🗒️</div>
+  <div id="notePaper"></div>
+
+  <button id="nextBtn">İLERLE</button>
+</div>
+
+<!-- AYİN EKRANI -->
+<div id="ritualScreen">
+  <div class="ritual-container" id="ritualGame">
+    <h1>KARANLIK AYİN</h1>
+    <p id="ritualStep">1. Adım: Ayini başlat</p>
+
+    <button onclick="chooseRitual('mum')">🕯 Mum Yak</button>
+    <button onclick="chooseRitual('kitap')">📖 Eski Kitabı Aç</button>
+    <button onclick="chooseRitual('kan')">🩸 Kan Sun</button>
+
+    <div id="ritualText"></div>
+    <div class="symbol" id="ritualSymbol">⛧</div>
+  </div>
+</div>
+
+<script>
+const bgSound = document.getElementById("bgSound");
+document.body.addEventListener("click", () => {
+  if (bgSound.paused) bgSound.play();
+}, { once: true });
+
+const introTexts = [
+  "Hoş geldin Dilan.",
+  "Ailen lanetlenmiş bir cin kabilesi tarafından öldürüldü.",
+  "Tek mal varlığın evdeki para kasasında.",
+  "Dilan, kasanın anahtarını çözmeye başlamalısın."
+];
+
+const afterSafeTexts = [
+  "Kasanın etrafını kontrol etmeye başla.",
+  "Ve kasanın altından bir not buldun.",
+  'Okumak için <span class="red-note" id="realNote">not</span>a dokun.'
+];
+
+const revengeTexts = [
+  "Kasanın içinde sevgilinin kafasını kesilmiş bir şekilde görüyorsun.",
+  "Ağzında 1 KG altın var.",
+  "Artık parayı düşünmüyorsun. Tek düşündüğün şey: İNTİKAM."
+];
+
+const finalTexts = [
+  "Önce şeytanla anlaşma yapmalısın.",
+  "Ayin yaparak kendini kanıtla."
+];
+
+let stage = "intro";
+let index = 0;
+let revengeIndex = 0;
+let finalIndex = 0;
+let secretCode = Math.floor(1000 + Math.random() * 9000);
+let attempts = [];
+
+const textEl = document.getElementById("text");
+const nextBtn = document.getElementById("nextBtn");
+const input = document.getElementById("codeInput");
+const checkBtn = document.getElementById("checkBtn");
+const historyEl = document.getElementById("history");
+const noteEmoji = document.getElementById("noteEmoji");
+const notePaper = document.getElementById("notePaper");
+
+function animateText() {
+  textEl.classList.remove("animate");
+  void textEl.offsetWidth;
+  textEl.classList.add("animate");
+}
+
+function shakeScreen() {
+  document.body.classList.remove("shake");
+  void document.body.offsetWidth;
+  document.body.classList.add("shake");
+}
+
+function reverseText(str) {
+  return str.split("").reverse().join("");
+}
+
+nextBtn.onclick = () => {
+  if (stage === "intro") {
+    if (index < introTexts.length) {
+      textEl.innerText = introTexts[index++];
+      animateText();
+    } else {
+      stage = "safe";
+      textEl.innerText = "Kasa 4 haneli bir şifre istiyor.";
+      animateText();
+      nextBtn.style.display = "none";
+      input.style.display = "block";
+      checkBtn.style.display = "block";
+      historyEl.innerText = "Denenen şifreler:";
+    }
+  }
+  else if (stage === "afterSafe") {
+    if (index < afterSafeTexts.length) {
+      textEl.innerHTML = afterSafeTexts[index++];
+      animateText();
+      if (index === afterSafeTexts.length) {
+        noteEmoji.style.display = "block";
+        setTimeout(bindRealNote, 0);
+      }
+    }
+  }
+  else if (stage === "revenge") {
+    if (revengeIndex < revengeTexts.length) {
+      textEl.innerText = revengeTexts[revengeIndex++];
+      animateText();
+      if (textEl.innerText.includes("İNTİKAM")) shakeScreen();
+    } else {
+      stage = "final";
+      nextBtn.style.display = "block";
+    }
+  }
+  else if (stage === "final") {
+    if (finalIndex < finalTexts.length) {
+      textEl.innerText = finalTexts[finalIndex++];
+      animateText();
+    } else {
+      // AYİN EKRANINA GEÇ
+      document.getElementById("container").style.display = "none";
+      document.getElementById("ritualScreen").style.display = "flex";
+    }
+  }
+};
+
+checkBtn.onclick = () => {
+  const guess = input.value;
+  attempts.push(guess);
+  historyEl.innerText = "Denenen şifreler: " + attempts.join(", ");
+
+  if (stage === "safe") {
+    if (guess < secretCode) {
+      textEl.innerText = "Lütfen daha büyük bir sayı dene.";
+      shakeScreen();
+    } else if (guess > secretCode) {
+      textEl.innerText = "Lütfen daha küçük bir sayı dene.";
+      shakeScreen();
+    } else {
+      textEl.innerText = "Kasa açıldı. Ama içerisi boştu.";
+      input.style.display = "none";
+      checkBtn.style.display = "none";
+      nextBtn.style.display = "block";
+      stage = "afterSafe";
+      index = 0;
+    }
+    animateText();
+  }
+  else if (stage === "notePassword") {
+    if (guess === "10102006") {
+      textEl.innerText = "Şifre doğru.";
+      input.style.display = "none";
+      checkBtn.style.display = "none";
+      historyEl.innerText = "";
+      stage = "revenge";
+      revengeIndex = 0;
+      nextBtn.style.display = "block";
+    } else {
+      textEl.innerText = "Şifre yanlış.";
+      shakeScreen();
+    }
+    animateText();
+  }
+  input.value = "";
+};
+
+function bindRealNote() {
+  const realNote = document.getElementById("realNote");
+  realNote.onclick = () => {
+    notePaper.style.display = "block";
+    const noteText =
+      "10102006 Şöminenin arkasında gizli bir kasa daha var. İlerlemek için şifreyi girin.";
+    notePaper.innerText = reverseText(noteText);
+    textEl.innerText = "Notu okuyorsun. İlerlemek için şifreyi gir.";
+    animateText();
+    input.style.display = "block";
+    checkBtn.style.display = "block";
+    stage = "notePassword";
+  };
+}
+
+/* === AYİN LOGİĞİ === */
+let ritualStep = 0;
+const ritualOrder = ["mum", "kitap", "kan"];
+const ritualText = document.getElementById("ritualText");
+const ritualGame = document.getElementById("ritualGame");
+const ritualSymbol = document.getElementById("ritualSymbol");
+
+function chooseRitual(choice) {
+  if (choice === ritualOrder[ritualStep]) {
+    ritualStep++;
+    ritualSuccess();
+  } else {
+    ritualFail();
+  }
+}
+
+function ritualSuccess() {
+  ritualGame.classList.remove("shake");
+  void ritualGame.offsetWidth;
+
+  if (ritualStep === 1) {
+    ritualText.innerHTML = "Mum yanıyor... Gölgeler kıpırdıyor.";
+    document.getElementById("ritualStep").innerText = "2. Adım: Bilgiyi uyandır";
+  }
+  else if (ritualStep === 2) {
+    ritualText.innerHTML = "Kitap fısıldıyor... Kelimeler canlı.";
+    document.getElementById("ritualStep").innerText = "3. Adım: Bedel öde";
+  }
+  else if (ritualStep === 3) {
+    ritualText.innerHTML = "<b>AYİN TAMAMLANDI.</b><br>Bir şey seni izliyor.";
+    ritualSymbol.classList.add("show");
+    document.getElementById("ritualStep").innerText = "SON";
+  }
+}
+
+function ritualFail() {
+  ritualGame.classList.add("shake");
+  ritualText.innerHTML = "Yanlış adım. Bir şey kızdı.";
+}
+</script>
+
+</body>
+</html>
